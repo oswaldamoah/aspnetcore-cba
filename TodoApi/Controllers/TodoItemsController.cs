@@ -6,10 +6,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Models;
+using Mapster; // Add this for Mapster
 
 namespace TodoApi.Controllers
 {
-    [Route("api/[controller]")] // replace controller with Controller name
+    [Route("api/[controller]")]
     [ApiController]
     public class TodoItemsController : ControllerBase
     {
@@ -22,14 +23,15 @@ namespace TodoApi.Controllers
 
         // GET: api/TodoItems
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<TodoItem>>> GetTodoItems()
+        public async Task<ActionResult<IEnumerable<TodoItemDTO>>> GetTodoItems()
         {
-            return await _context.TodoItems.ToListAsync();
+            // Map TodoItems to TodoItemDTOs
+            return await _context.TodoItems.ProjectToType<TodoItemDTO>().ToListAsync();
         }
 
         // GET: api/TodoItems/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<TodoItem>> GetTodoItem(long id)
+        public async Task<ActionResult<TodoItemDTO>> GetTodoItem(long id)
         {
             var todoItem = await _context.TodoItems.FindAsync(id);
 
@@ -38,19 +40,23 @@ namespace TodoApi.Controllers
                 return NotFound();
             }
 
-            return todoItem;
+            // Map TodoItem to TodoItemDTO
+            var todoItemDTO = todoItem.Adapt<TodoItemDTO>();
+
+            return todoItemDTO;
         }
 
         // PUT: api/TodoItems/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutTodoItem(long id, TodoItem todoItem)
+        public async Task<IActionResult> PutTodoItem(long id, TodoItemDTO todoItemDTO)
         {
-            if (id != todoItem.Id)
+            if (id != todoItemDTO.Id)
             {
                 return BadRequest();
             }
 
+            // Map the DTO back to the entity
+            var todoItem = todoItemDTO.Adapt<TodoItem>();
             _context.Entry(todoItem).State = EntityState.Modified;
 
             try
@@ -73,14 +79,16 @@ namespace TodoApi.Controllers
         }
 
         // POST: api/TodoItems
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<TodoItem>> PostTodoItem(TodoItem todoItem)
+        public async Task<ActionResult<TodoItemDTO>> PostTodoItem(TodoItemDTO todoItemDTO)
         {
+            // Map DTO to TodoItem
+            var todoItem = todoItemDTO.Adapt<TodoItem>();
+
             _context.TodoItems.Add(todoItem);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetTodoItem), new { id = todoItem.Id }, todoItem);
+            return CreatedAtAction(nameof(GetTodoItem), new { id = todoItem.Id }, todoItem.Adapt<TodoItemDTO>());
         }
 
         // DELETE: api/TodoItems/5
